@@ -8,6 +8,15 @@ const t = getTenant();
 export const metadata: Metadata = {
   title: t.meta.title,
   description: t.meta.description,
+  openGraph: {
+    title: t.meta.title,
+    description: t.meta.description,
+    siteName: t.name,
+    type: 'website',
+  },
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
