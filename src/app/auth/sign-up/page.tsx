@@ -22,7 +22,7 @@ export default function SignUpPage() {
       if (result.error) {
         setError(result.error.message ?? 'Sign up failed');
       } else {
-        router.push('/dashboard');
+        router.push('/onboarding');
       }
     } catch {
       setError('Something went wrong');
