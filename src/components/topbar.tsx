@@ -1,5 +1,6 @@
 import { getTenant } from '@/lib/tenant';
 import { ThemeToggle } from './theme-toggle';
+import { SignOutButton } from './sign-out-button';
 
 export function Topbar() {
   const t = getTenant();
@@ -13,6 +14,7 @@ export function Topbar() {
       <div className="topbar-right">
         <ThemeToggle />
         <button className="btn-ghost-sm">refresh</button>
+        <SignOutButton />
       </div>
     </header>
   );

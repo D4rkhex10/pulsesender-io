@@ -1,13 +1,91 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 export default function SettingsPage() {
   const [showPass, setShowPass] = useState(false);
   const [sslEnabled, setSslEnabled] = useState(false);
+  const [mdFileName, setMdFileName] = useState<string | null>(null);
+  const [mdContent, setMdContent] = useState<string | null>(null);
+  const [mdDragOver, setMdDragOver] = useState(false);
+  const mdInputRef = useRef<HTMLInputElement>(null);
+
+  const handleMdFile = useCallback((file: File) => {
+    if (!file.name.endsWith('.md')) return;
+    setMdFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => setMdContent(e.target?.result as string);
+    reader.readAsText(file);
+  }, []);
+
+  const handleMdDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setMdDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleMdFile(file);
+  }, [handleMdFile]);
 
   return (
     <>
+      {/* Brand Configuration */}
+      <div className="panel">
+        <div className="panel-header">
+          <span className="panel-title">Brand Configuration</span>
+          <span className="muted-label">.md</span>
+        </div>
+        <div className="panel-body">
+          <p className="settings-hint">
+            Upload your company&apos;s <code>.md</code> file to tailor the outreach experience — tone, messaging, templates, and targeting will adapt to your brand.
+          </p>
+          <input
+            ref={mdInputRef}
+            type="file"
+            accept=".md"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleMdFile(file);
+            }}
+          />
+          <div
+            className={`csv-drop-zone${mdDragOver ? ' drag-over' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setMdDragOver(true); }}
+            onDragLeave={() => setMdDragOver(false)}
+            onDrop={handleMdDrop}
+          >
+            {mdContent ? (
+              <div className="md-preview">
+                <div className="md-preview-header">
+                  <span className="md-preview-filename">{mdFileName}</span>
+                  <button
+                    className="btn-ghost-sm"
+                    type="button"
+                    onClick={() => { setMdContent(null); setMdFileName(null); }}
+                  >
+                    remove
+                  </button>
+                </div>
+                <pre className="md-preview-content">{mdContent}</pre>
+              </div>
+            ) : (
+              <>
+                <div className="csv-drop-icon">📄</div>
+                <div className="csv-drop-label">Drag &amp; drop a .md file here</div>
+                <div className="csv-drop-sub">or</div>
+                <button className="btn-ghost" type="button" onClick={() => mdInputRef.current?.click()}>
+                  Browse File
+                </button>
+              </>
+            )}
+          </div>
+          {mdContent && (
+            <div className="settings-actions">
+              <button className="btn-primary">Apply Brand Config</button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* SMTP Configuration */}
       <div className="panel">
         <div className="panel-header">
@@ -95,6 +173,38 @@ export default function SettingsPage() {
           <button className="btn-ghost" style={{ borderColor: '#8C7E52', color: '#8C7E52' }}>
             Browse XLSX File
           </button>
+        </div>
+      </div>
+
+      {/* WhatsApp (Kapso) Configuration */}
+      <div className="panel">
+        <div className="panel-header">
+          <span className="panel-title">WhatsApp Integration</span>
+          <span className="muted-label">Kapso</span>
+        </div>
+        <div className="panel-body">
+          <p className="settings-hint">
+            Connect your WhatsApp number via <a href="https://kapso.ai" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)' }}>Kapso</a>.
+            Run <code>npm i -g @kapso/cli && kapso setup</code> to get your API key and phone number ID.
+          </p>
+          <div className="settings-grid">
+            <div className="settings-field">
+              <label className="settings-label">Kapso API Key</label>
+              <input type="password" className="settings-input" placeholder="kapso_live_..." autoComplete="off" spellCheck={false} />
+            </div>
+            <div className="settings-field">
+              <label className="settings-label">Phone Number ID</label>
+              <input type="text" className="settings-input" placeholder="647015955153740" autoComplete="off" spellCheck={false} />
+            </div>
+            <div className="settings-field">
+              <label className="settings-label">Webhook URL</label>
+              <input type="text" className="settings-input" readOnly value={typeof window !== 'undefined' ? `${window.location.origin}/api/whatsapp/webhook` : '/api/whatsapp/webhook'} />
+            </div>
+          </div>
+          <div className="settings-actions">
+            <button className="btn-primary">Save WhatsApp Config</button>
+            <button className="btn-ghost">Send Test Message</button>
+          </div>
         </div>
       </div>
 
