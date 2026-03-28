@@ -19,12 +19,17 @@ export default function SignInPage() {
     try {
       const result = await authClient.signIn.email({ email, password });
       if (result.error) {
+        if (result.error.code === 'EMAIL_NOT_VERIFIED') {
+          router.push('/auth/verify?email=' + encodeURIComponent(email));
+          return;
+        }
         setError(result.error.message ?? 'Sign in failed');
       } else {
         router.push('/dashboard');
       }
-    } catch {
-      setError('Something went wrong');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong';
+      setError(message);
     } finally {
       setLoading(false);
     }
