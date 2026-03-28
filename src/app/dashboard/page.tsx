@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { StatCard } from '@/components/stat-card';
 import { StatGrid } from '@/components/stat-grid';
 import { PipelineControls } from '@/components/pipeline-controls';
@@ -6,30 +9,35 @@ import { EmailOutreach } from '@/components/email-outreach';
 import { WhatsAppOutreach } from '@/components/whatsapp-outreach';
 import { Terminal } from '@/components/terminal';
 
+function formatDate(d: string | null) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' });
+}
+
 export default function OutboundPage() {
+  const [stats, setStats] = useState({ sentToday: 0, totalSent: 0, queueCount: 0, waToday: 0, lastWaSend: null as string | null });
+
+  useEffect(() => {
+    fetch('/api/dashboard').then(r => r.ok ? r.json() : null).then(d => { if (d) setStats(d); }).catch(() => {});
+  }, []);
+
   return (
     <>
-      {/* Stats row */}
       <StatGrid>
-        <StatCard label="Sent Today" value={12} accent sub="47 total" />
-        <StatCard label="Follow-ups Today" value={3} sub="8 total" />
-        <StatCard label="New in Queue" value={15} />
-        <StatCard label="WhatsApp Today" value={2} sub="Last run: Mar 26" />
+        <StatCard label="Sent Today" value={stats.sentToday} accent sub={`${stats.totalSent} total`} />
+        <StatCard label="Follow-ups Today" value={0} sub="0 total" />
+        <StatCard label="New in Queue" value={stats.queueCount} />
+        <StatCard label="WhatsApp Today" value={stats.waToday} sub={stats.lastWaSend ? `Last run: ${formatDate(stats.lastWaSend)}` : 'No sends yet'} />
       </StatGrid>
 
-      {/* Pipeline controls */}
       <PipelineControls />
-
-      {/* Send Monitor */}
       <SendMonitor />
 
-      {/* Channels row: Email + WhatsApp side by side */}
       <div className="channels-row">
         <EmailOutreach />
         <WhatsAppOutreach />
       </div>
 
-      {/* Pipeline Log */}
       <div className="panel">
         <div className="panel-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -40,7 +48,7 @@ export default function OutboundPage() {
           </div>
           <span className="muted-label">auto-refresh 10s</span>
         </div>
-        <Terminal content="[2026-03-26 14:32:01] Pipeline started...\n[2026-03-26 14:32:02] Loading prospects (15 in queue)...\n[2026-03-26 14:32:03] Sending batch 1/3 (5 emails)...\n[2026-03-26 14:32:15] ✓ 5/5 sent successfully\n[2026-03-26 14:32:16] Sending batch 2/3..." height="320px" />
+        <Terminal content="[Waiting for pipeline activity...]" height="320px" />
       </div>
     </>
   );

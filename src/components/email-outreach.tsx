@@ -1,82 +1,90 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TemplateBadge } from './badge';
 
-const demoSent = [
-  { date: 'Mar 26, 14:32', company: 'Acme Corp', email: 'hello@acme.com', template: 'direct' },
-  { date: 'Mar 26, 14:28', company: 'Bolt Media', email: 'info@bolt.ng', template: 'proof' },
-  { date: 'Mar 26, 14:20', company: 'Crux Studio', email: 'team@crux.io', template: 'fear' },
-  { date: 'Mar 25, 18:15', company: 'Dune Events', email: 'hi@dune.co', template: 'social' },
-  { date: 'Mar 25, 17:45', company: 'Echo Labs', email: 'hello@echo.dev', template: 'followup' },
-];
+interface SentEmail {
+  id: string;
+  company: string | null;
+  email: string;
+  template: string | null;
+  sent_at: string | null;
+}
 
-const demoProspects = [
-  { company: 'FreshCo', email: 'hello@freshco.ng', industry: 'F&B', template: 'direct', hook: 'New restaurant opening in Lagos', status: 'queued' },
-  { company: 'GlowUp', email: 'info@glowup.co', industry: 'Fashion', template: 'proof', hook: 'Fashion week campaign', status: 'queued' },
-  { company: 'HypeHQ', email: 'team@hypehq.io', industry: 'Events', template: 'fear', hook: 'Upcoming tech summit', status: 'sent' },
-];
+function formatDate(d: string | null) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-NG', { month: 'short', day: 'numeric' }) + ', ' + dt.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' });
+}
 
 export function EmailOutreach() {
   const [activeTab, setActiveTab] = useState<'sent' | 'prospects'>('sent');
+  const [sentEmails, setSentEmails] = useState<SentEmail[]>([]);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    fetch('/api/tracking').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.tracking) {
+        setSentEmails(d.tracking.map((t: SentEmail & { opens?: number }) => ({
+          id: t.id,
+          company: t.company,
+          email: t.email,
+          template: t.template,
+          sent_at: t.sent_at,
+        })));
+      }
+    }).catch(() => {});
+  }, []);
+
+  const filtered = sentEmails.filter(e =>
+    !search || [e.company, e.email].some(f => f?.toLowerCase().includes(search.toLowerCase()))
+  );
 
   return (
     <div className="panel">
-      {/* Header */}
       <div className="panel-header" style={{ flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span className="panel-title">Email Outreach</span>
-          <span className="muted-label">5 sent today</span>
+          <span className="muted-label">{sentEmails.length} sent</span>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button className="btn-ghost-sm">✎ Templates</button>
+          <button className="btn-ghost-sm">Templates</button>
           <button className="btn-ghost-sm">Preview</button>
-          <button className="btn-ghost-sm">Test Email</button>
           <button className="btn-primary" style={{ padding: '6px 14px', fontSize: '11px' }}>Send Mails</button>
-          <button className="btn-ghost-sm">Followups</button>
         </div>
       </div>
 
-      {/* Email stats */}
       <div className="email-stats-grid">
         <div className="email-stat">
           <span className="stat-label">Total Sent</span>
-          <span className="stat-value email-stat-value email-accent">47</span>
+          <span className="stat-value email-stat-value email-accent">{sentEmails.length}</span>
         </div>
         <div className="email-stat">
           <span className="stat-label">In Queue</span>
-          <span className="stat-value email-stat-value">12</span>
+          <span className="stat-value email-stat-value">0</span>
         </div>
         <div className="email-stat">
           <span className="stat-label">Followups Due</span>
-          <span className="stat-value email-stat-value">3</span>
+          <span className="stat-value email-stat-value">0</span>
         </div>
         <div className="email-stat">
           <span className="stat-label">Templates</span>
-          <span className="stat-value email-stat-value">5</span>
+          <span className="stat-value email-stat-value">0</span>
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="panel-header tabs-header">
         <div style={{ display: 'flex' }}>
-          <button
-            className={`tab ${activeTab === 'sent' ? 'active' : ''}`}
-            onClick={() => setActiveTab('sent')}
-          >
-            Sent Log ({demoSent.length})
+          <button className={`tab ${activeTab === 'sent' ? 'active' : ''}`} onClick={() => setActiveTab('sent')}>
+            Sent Log ({sentEmails.length})
           </button>
-          <button
-            className={`tab ${activeTab === 'prospects' ? 'active' : ''}`}
-            onClick={() => setActiveTab('prospects')}
-          >
-            Prospects ({demoProspects.length})
+          <button className={`tab ${activeTab === 'prospects' ? 'active' : ''}`} onClick={() => setActiveTab('prospects')}>
+            Prospects (0)
           </button>
         </div>
-        <input type="text" className="search-input" placeholder="Search..." />
+        <input type="text" className="search-input" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {/* Sent log */}
       {activeTab === 'sent' && (
         <div className="table-wrap">
           <table>
@@ -89,20 +97,23 @@ export function EmailOutreach() {
               </tr>
             </thead>
             <tbody>
-              {demoSent.map((row, i) => (
-                <tr key={i}>
-                  <td className="cell-muted">{row.date}</td>
-                  <td className="cell-company">{row.company}</td>
-                  <td className="cell-muted hide-sm">{row.email}</td>
-                  <td><TemplateBadge type={row.template} /></td>
-                </tr>
-              ))}
+              {filtered.length === 0 ? (
+                <tr><td colSpan={4} className="empty-cell">No emails sent yet</td></tr>
+              ) : (
+                filtered.map((row) => (
+                  <tr key={row.id}>
+                    <td className="cell-muted">{formatDate(row.sent_at)}</td>
+                    <td className="cell-company">{row.company || '—'}</td>
+                    <td className="cell-muted hide-sm">{row.email}</td>
+                    <td>{row.template ? <TemplateBadge type={row.template} /> : <span className="cell-dim">—</span>}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Prospects */}
       {activeTab === 'prospects' && (
         <div className="table-wrap">
           <table>
@@ -111,20 +122,11 @@ export function EmailOutreach() {
                 <th>Company</th>
                 <th className="hide-sm">Email</th>
                 <th>Industry</th>
-                <th>Template</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {demoProspects.map((row, i) => (
-                <tr key={i} className={row.status === 'sent' ? 'row-sent' : ''}>
-                  <td className="cell-company">{row.company}</td>
-                  <td className="cell-muted hide-sm">{row.email}</td>
-                  <td><span className={`badge badge-${row.industry.toLowerCase().replace(/[&\s]/g, '')}`}>{row.industry}</span></td>
-                  <td><TemplateBadge type={row.template} /></td>
-                  <td><span className={`status-${row.status}`}>{row.status}</span></td>
-                </tr>
-              ))}
+              <tr><td colSpan={4} className="empty-cell">No prospects in queue</td></tr>
             </tbody>
           </table>
         </div>

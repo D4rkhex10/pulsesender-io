@@ -1,19 +1,34 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { StatCard } from '@/components/stat-card';
 import { StatGrid } from '@/components/stat-grid';
 import { Panel } from '@/components/panel';
 
-const demoInbound = [
-  { handle: '@freshcobrand', platform: 'Instagram', intent: 'Looking for video content', found: 'Mar 26', status: 'pending' },
-  { handle: '@glowupng', platform: 'Twitter', intent: 'Needs brand refresh', found: 'Mar 26', status: 'responded' },
-  { handle: '@hypehq_events', platform: 'Instagram', intent: 'Event coverage needed', found: 'Mar 25', status: 'pending' },
-  { handle: '@technestnig', platform: 'LinkedIn', intent: 'Product launch video', found: 'Mar 25', status: 'pending' },
-  { handle: '@mintpayapp', platform: 'Twitter', intent: 'Fintech explainer video', found: 'Mar 24', status: 'responded' },
-  { handle: '@boltmedia_', platform: 'Instagram', intent: 'Social media content', found: 'Mar 24', status: 'pending' },
-  { handle: '@duneco_events', platform: 'Instagram', intent: 'After-movie production', found: 'Mar 23', status: 'pending' },
-  { handle: '@echolabshq', platform: 'LinkedIn', intent: 'Corporate video', found: 'Mar 23', status: 'no-email' },
-];
+interface InboundLead {
+  id: string;
+  handle: string;
+  platform: string;
+  intent: string | null;
+  status: string;
+  found_at: string;
+}
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString('en-NG', { month: 'short', day: 'numeric' });
+}
 
 export default function InboundPage() {
+  const [leads, setLeads] = useState<InboundLead[]>([]);
+
+  useEffect(() => {
+    fetch('/api/inbound').then(r => r.ok ? r.json() : null).then(d => { if (d?.leads) setLeads(d.leads); }).catch(() => {});
+  }, []);
+
+  const pending = leads.filter(l => l.status === 'pending').length;
+  const responded = leads.filter(l => l.status === 'responded').length;
+  const noEmail = leads.filter(l => l.status === 'no-email').length;
+
   return (
     <>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: '20px', letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
@@ -21,10 +36,10 @@ export default function InboundPage() {
       </div>
 
       <StatGrid>
-        <StatCard label="Total" value={8} valueClassName="emerald" />
-        <StatCard label="Pending" value={5} valueClassName="gold" />
-        <StatCard label="Responded" value={2} valueClassName="emerald" />
-        <StatCard label="Manual DM" value={1} />
+        <StatCard label="Total" value={leads.length} valueClassName="emerald" />
+        <StatCard label="Pending" value={pending} valueClassName="gold" />
+        <StatCard label="Responded" value={responded} valueClassName="emerald" />
+        <StatCard label="No Email" value={noEmail} />
       </StatGrid>
 
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -32,7 +47,7 @@ export default function InboundPage() {
         <button className="btn-ghost" style={{ borderColor: '#f59e0b', color: '#f59e0b' }}>Auto Respond</button>
       </div>
 
-      <Panel title="Intent Signals" subtitle={`${demoInbound.length} leads`}>
+      <Panel title="Intent Signals" subtitle={`${leads.length} leads`}>
         <div className="table-wrap" style={{ maxHeight: '500px', overflowY: 'auto' }}>
           <table>
             <thead>
@@ -46,24 +61,28 @@ export default function InboundPage() {
               </tr>
             </thead>
             <tbody>
-              {demoInbound.map((row, i) => (
-                <tr key={i}>
-                  <td className="cell-dim">{i + 1}</td>
-                  <td className="cell-company">{row.handle}</td>
-                  <td className="cell-muted">{row.platform}</td>
-                  <td>{row.intent}</td>
-                  <td className="cell-muted">{row.found}</td>
-                  <td>
-                    <span className={
-                      row.status === 'responded' ? 'sm-status-sent' :
-                      row.status === 'no-email' ? 'cell-dim' :
-                      'status-queued'
-                    }>
-                      {row.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {leads.length === 0 ? (
+                <tr><td colSpan={6} className="empty-cell">No inbound leads yet — they&apos;ll appear here from social listening and WhatsApp replies</td></tr>
+              ) : (
+                leads.map((row, i) => (
+                  <tr key={row.id}>
+                    <td className="cell-dim">{i + 1}</td>
+                    <td className="cell-company">{row.handle}</td>
+                    <td className="cell-muted">{row.platform}</td>
+                    <td>{row.intent || '—'}</td>
+                    <td className="cell-muted">{formatDate(row.found_at)}</td>
+                    <td>
+                      <span className={
+                        row.status === 'responded' ? 'sm-status-sent' :
+                        row.status === 'no-email' ? 'cell-dim' :
+                        'status-queued'
+                      }>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

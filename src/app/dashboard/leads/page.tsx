@@ -1,75 +1,53 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IndustryBadge } from '@/components/badge';
 
-const demoLeads = [
-  {
-    industry: 'Events',
-    entries: [
-      { company: 'HypeHQ', contact: 'Tunde Bakare', email: 'tunde@hypehq.io' },
-      { company: 'Dune Events', contact: 'Kola Adeyemi', email: 'kola@dune.co' },
-      { company: 'PulseFest', contact: 'Amara Obi', email: 'amara@pulsefest.ng' },
-    ],
-  },
-  {
-    industry: 'Fashion',
-    entries: [
-      { company: 'GlowUp', contact: 'Chioma Okafor', email: 'chioma@glowup.co' },
-      { company: 'ThreadsNG', contact: 'Bisi Alade', email: 'bisi@threads.ng' },
-    ],
-  },
-  {
-    industry: 'Tech',
-    entries: [
-      { company: 'TechNest', contact: 'Bola Ahmed', email: 'bola@technest.io' },
-      { company: 'Echo Labs', contact: 'Femi Ojo', email: 'femi@echo.dev' },
-      { company: 'CodeCraft', contact: 'Yemi Sola', email: 'yemi@codecraft.ng' },
-      { company: 'DataPulse', contact: 'Nkem Eze', email: 'nkem@datapulse.io' },
-    ],
-  },
-  {
-    industry: 'F&B',
-    entries: [
-      { company: 'FreshCo', contact: 'Adewale Johnson', email: 'ade@freshco.ng' },
-      { company: 'BiteClub', contact: 'Sade Oni', email: 'sade@biteclub.co' },
-    ],
-  },
-  {
-    industry: 'Fintech',
-    entries: [
-      { company: 'MintPay', contact: 'Kemi Adeola', email: 'kemi@mintpay.co' },
-      { company: 'PayStack Clone', contact: 'Ola Babs', email: 'ola@payclone.ng' },
-      { company: 'CoinBase NG', contact: 'Temi Gold', email: 'temi@coinbaseng.io' },
-    ],
-  },
-  {
-    industry: 'Music',
-    entries: [
-      { company: 'BeatFactory', contact: 'DJ Flame', email: 'flame@beatfactory.ng' },
-      { company: 'SoundWave', contact: 'Asa Green', email: 'asa@soundwave.co' },
-    ],
-  },
-];
+interface Contact {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  company: string | null;
+  industry: string | null;
+}
 
-const totalLeads = demoLeads.reduce((sum, g) => sum + g.entries.length, 0);
+interface IndustryGroup {
+  industry: string;
+  entries: Contact[];
+}
 
 export default function LeadsPage() {
+  const [groups, setGroups] = useState<IndustryGroup[]>([]);
+  const [totalLeads, setTotalLeads] = useState(0);
   const [search, setSearch] = useState('');
 
+  useEffect(() => {
+    fetch('/api/contacts').then(r => r.ok ? r.json() : null).then(d => {
+      if (!d?.contacts) return;
+      const contacts: Contact[] = d.contacts.filter((c: Contact) => c.email);
+      setTotalLeads(contacts.length);
+
+      const byIndustry: Record<string, Contact[]> = {};
+      for (const c of contacts) {
+        const ind = c.industry || 'Other';
+        if (!byIndustry[ind]) byIndustry[ind] = [];
+        byIndustry[ind].push(c);
+      }
+      setGroups(Object.entries(byIndustry).map(([industry, entries]) => ({ industry, entries })));
+    }).catch(() => {});
+  }, []);
+
   const filtered = search
-    ? demoLeads
+    ? groups
         .map((group) => ({
           ...group,
-          entries: group.entries.filter(
-            (e) =>
-              e.company.toLowerCase().includes(search.toLowerCase()) ||
-              e.contact.toLowerCase().includes(search.toLowerCase()) ||
-              e.email.toLowerCase().includes(search.toLowerCase())
+          entries: group.entries.filter((e) =>
+            [e.company, e.first_name, e.last_name, e.email].some(f => f?.toLowerCase().includes(search.toLowerCase()))
           ),
         }))
         .filter((g) => g.entries.length > 0)
-    : demoLeads;
+    : groups;
 
   return (
     <>
@@ -78,38 +56,38 @@ export default function LeadsPage() {
           <span className="panel-title" style={{ fontSize: '13px' }}>All Leads</span>
           <span className="muted-label">{totalLeads} leads</span>
         </div>
-        <input
-          type="text"
-          className="leads-search"
-          placeholder="Search leads..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <input type="text" className="leads-search" placeholder="Search leads..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
-      <div className="leads-grid">
-        {filtered.map((group) => (
-          <div key={group.industry} className="lead-card">
-            <div className="lead-card-header">
-              <IndustryBadge industry={group.industry} />
-              <span className="lead-card-count">{group.entries.length} leads</span>
+      {filtered.length === 0 ? (
+        <div className="panel" style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <span className="cell-dim">{totalLeads === 0 ? 'No leads yet — import contacts to get started' : 'No leads match search'}</span>
+        </div>
+      ) : (
+        <div className="leads-grid">
+          {filtered.map((group) => (
+            <div key={group.industry} className="lead-card">
+              <div className="lead-card-header">
+                <IndustryBadge industry={group.industry} />
+                <span className="lead-card-count">{group.entries.length} leads</span>
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <tbody>
+                    {group.entries.map((entry) => (
+                      <tr key={entry.id}>
+                        <td className="cell-company">{entry.company || '—'}</td>
+                        <td className="cell-muted">{[entry.first_name, entry.last_name].filter(Boolean).join(' ') || '—'}</td>
+                        <td className="cell-dim hide-sm">{entry.email}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="table-wrap">
-              <table>
-                <tbody>
-                  {group.entries.map((entry, i) => (
-                    <tr key={i}>
-                      <td className="cell-company">{entry.company}</td>
-                      <td className="cell-muted">{entry.contact}</td>
-                      <td className="cell-dim hide-sm">{entry.email}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }
