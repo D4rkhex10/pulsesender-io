@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { authClient } from '@/lib/auth/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tierId = searchParams.get('tier');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +24,20 @@ export default function SignUpPage() {
       if (result.error) {
         setError(result.error.message ?? 'Sign up failed');
       } else {
-        router.push('/onboarding');
+        // Subscribe to selected tier if coming from pricing
+        if (tierId) {
+          await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tierId }),
+          });
+        }
+
+        if (result.data?.user && !result.data.user.emailVerified) {
+          router.push('/auth/verify?email=' + encodeURIComponent(email));
+        } else {
+          router.push('/onboarding');
+        }
       }
     } catch {
       setError('Something went wrong');
@@ -91,5 +106,13 @@ export default function SignUpPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<div className="auth-page"><div className="auth-card"><p className="auth-subtitle">Loading...</p></div></div>}>
+      <SignUpForm />
+    </Suspense>
   );
 }
