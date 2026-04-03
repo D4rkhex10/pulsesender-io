@@ -19,11 +19,14 @@ export default function SignInPage() {
     try {
       const result = await authClient.signIn.email({ email, password });
       if (result.error) {
-        if (result.error.code === 'EMAIL_NOT_VERIFIED') {
+        const msg = result.error.message ?? '';
+        if (result.error.code === 'EMAIL_NOT_VERIFIED' || msg.toLowerCase().includes('email not verified')) {
+          // Send a fresh OTP and redirect to verify page
+          await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
           router.push('/auth/verify?email=' + encodeURIComponent(email));
           return;
         }
-        setError(result.error.message ?? 'Sign in failed');
+        setError(msg || 'Sign in failed');
       } else {
         router.push('/dashboard');
       }

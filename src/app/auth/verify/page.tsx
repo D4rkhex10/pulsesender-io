@@ -20,18 +20,19 @@ function VerifyForm() {
     setLoading(true);
 
     try {
-      const { error: verifyError } = await authClient.emailOtp.verifyEmail({
+      const result = await authClient.emailOtp.verifyEmail({
         email,
         otp: code,
       });
 
-      if (verifyError) {
-        setError(verifyError.message ?? 'Invalid code');
+      if (result.error) {
+        setError(result.error.message ?? 'Invalid or expired code');
       } else {
         router.push('/onboarding');
       }
-    } catch {
-      setError('Something went wrong');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Verification failed — try again';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -41,11 +42,15 @@ function VerifyForm() {
     setResent(false);
     setError('');
     try {
-      await authClient.sendVerificationEmail({
+      const result = await authClient.emailOtp.sendVerificationOtp({
         email,
-        callbackURL: window.location.origin + '/auth/verify?email=' + encodeURIComponent(email),
+        type: 'email-verification',
       });
-      setResent(true);
+      if (result.error) {
+        setError(result.error.message ?? 'Failed to resend code');
+      } else {
+        setResent(true);
+      }
     } catch {
       setError('Failed to resend code');
     }

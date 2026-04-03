@@ -1,3 +1,3 @@
 import { authHandler } from '@/lib/auth/server';
 
-export const { GET, POST } = authHandler();
+export const { GET, POST, PUT, DELETE, PATCH } = authHandler();

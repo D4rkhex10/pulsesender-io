@@ -26,21 +26,28 @@ function SignUpForm() {
       } else {
         // Subscribe to selected tier if coming from pricing
         if (tierId) {
-          await fetch('/api/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tierId }),
-          });
+          try {
+            await fetch('/api/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ tierId }),
+            });
+          } catch {
+            // Non-blocking — subscription can be retried later
+          }
         }
 
         if (result.data?.user && !result.data.user.emailVerified) {
+          // Explicitly send OTP for email verification
+          await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
           router.push('/auth/verify?email=' + encodeURIComponent(email));
         } else {
           router.push('/onboarding');
         }
       }
-    } catch {
-      setError('Something went wrong');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong';
+      setError(message);
     } finally {
       setLoading(false);
     }
